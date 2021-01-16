@@ -1,5 +1,8 @@
+@file:Suppress("DEPRECATION")
+
 package mpei.lab1
 
+import javafx.application.Platform
 import javafx.scene.control.Alert
 import org.bouncycastle.x509.X509V3CertificateGenerator
 import java.io.*
@@ -10,12 +13,14 @@ import java.util.*
 import javax.security.auth.x500.X500Principal
 import kotlin.random.Random
 
-open class Crypto() {
+open class Crypto {
     fun createAlert(msg: String, header: String, type: Alert.AlertType) {
-        val alert = Alert(type)
-        alert.headerText = header
-        alert.contentText = msg
-        alert.showAndWait()
+        Platform.runLater {
+            val alert = Alert(type)
+            alert.headerText = header
+            alert.contentText = msg
+            alert.showAndWait()
+        }
     }
 
     fun createKeyPair(keyStore: KeyStore, name: String, alg: String, sign: String) {
