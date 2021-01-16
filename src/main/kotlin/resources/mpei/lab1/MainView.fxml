@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<VBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.2" xmlns:fx="http://javafx.com/fxml/1">
+   <children>
+      <MenuBar>
+        <menus>
+          <Menu mnemonicParsing="false" text="Файл">
+            <items>
+                  <MenuItem mnemonicParsing="false" onAction="#createFileAction" text="Создать" />
+                  <MenuItem mnemonicParsing="false" onAction="#openFileAction" text="Загрузить" />
+                  <MenuItem mnemonicParsing="false" onAction="#saveFileAction" text="Сохранить" />
+                  <SeparatorMenuItem mnemonicParsing="false">
+                     <content>
+                        <StackPane prefHeight="20.0">
+                           <children>
+                              <Separator />
+                           </children>
+                        </StackPane>
+                     </content>
+                  </SeparatorMenuItem>
+                  <MenuItem onAction="#closeAction" text="Выход" />
+                  <SeparatorMenuItem mnemonicParsing="false">
+                     <content>
+                        <StackPane prefHeight="20.0">
+                           <children>
+                              <Separator />
+                           </children>
+                        </StackPane>
+                     </content>
+                  </SeparatorMenuItem>
+              <MenuItem onAction="#aboutAction" text="О программе" />
+            </items>
+          </Menu>
+          <Menu mnemonicParsing="false" text="Управление ключами">
+            <items>
+              <MenuItem mnemonicParsing="false" onAction="#exportPublicKeyAction" text="Экспорт открытого ключа" />
+                  <MenuItem mnemonicParsing="false" onAction="#importPublicKeyAction" text="Импорт открытого ключа" />
+                  <MenuItem mnemonicParsing="false" onAction="#deleteKeyPairAction" text="Удаление пары ключей" />
+                  <MenuItem mnemonicParsing="false" onAction="#createKeyPairAction" text="Создание пары ключей" />
+                  <MenuItem mnemonicParsing="false" onAction="#selectPrivateKeyAction" text="Выбор закрытого ключа" />
+            </items>
+          </Menu>
+        </menus>
+      </MenuBar>
+      <HBox prefHeight="100.0" prefWidth="200.0">
+         <children>
+            <VBox>
+               <children>
+                  <StackPane>
+                     <children>
+                        <Label text="Имя пользоватяеля">
+                           <font>
+                              <Font name="Times New Roman Italic" size="12.0" />
+                           </font>
+                        </Label>
+                     </children>
+                     <VBox.margin>
+                        <Insets left="10.0" top="10.0" />
+                     </VBox.margin>
+                  </StackPane>
+                  <StackPane>
+                     <children>
+                        <TextField fx:id="UserName" promptText="Имя пользователя">
+                           <StackPane.margin>
+                              <Insets left="10.0" />
+                           </StackPane.margin>
+                        </TextField>
+                     </children>
+                  </StackPane>
+               </children>
+            </VBox>
+            <StackPane>
+               <HBox.margin>
+                  <Insets left="20.0" right="20.0" />
+               </HBox.margin>
+               <children>
+                  <ChoiceBox fx:id="SelectUser" prefWidth="150.0" />
+               </children>
+            </StackPane>
+            <StackPane>
+               <children>
+                  <Button mnemonicParsing="false" onAction="#openFileAction" text="Загрузить документ" textAlignment="CENTER" wrapText="true">
+                     <font>
+                        <Font name="Times New Roman Italic" size="15.0" />
+                     </font>
+                  </Button>
+               </children>
+               <HBox.margin>
+                  <Insets left="20.0" right="20.0" />
+               </HBox.margin>
+            </StackPane>
+            <StackPane>
+               <children>
+                  <Button mnemonicParsing="false" onAction="#saveFileAction" text="Сохранить документ" textAlignment="CENTER" wrapText="true">
+                     <font>
+                        <Font name="Times New Roman Italic" size="15.0" />
+                     </font>
+                  </Button>
+               </children>
+               <HBox.margin>
+                  <Insets left="20.0" right="20.0" />
+               </HBox.margin>
+            </StackPane>
+         </children>
+      </HBox>
+      <StackPane prefHeight="300.0">
+         <children>
+            <TextArea fx:id="WatchDocument" prefHeight="200.0" prefWidth="200.0">
+               <font>
+                  <Font name="Times New Roman" size="16.0" />
+               </font></TextArea>
+         </children>
+         <VBox.margin>
+            <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+         </VBox.margin>
+      </StackPane>
+   </children>
+</VBox>

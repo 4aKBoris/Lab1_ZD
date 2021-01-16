@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<StackPane cacheShape="false" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" xmlns="http://javafx.com/javafx/11.0.2" xmlns:fx="http://javafx.com/fxml/1">
+   <children>
+      <TextArea cacheShape="false" centerShape="false" editable="false" focusTraversable="false" scaleShape="false" scrollLeft="20.0" scrollTop="20.0" text="Лабораторная работа №1&#10;&#10;Название: Средства создания и проверки электронной подписи в Microsoft Visual Studio&#10;Предмет: Защита данных&#10;Группа: А-05-17&#10;Студент: Лосев Д.А.&#10;Вариант: 11&#10;Преподаватель: Хорев П.Б.&#10;" wrapText="true">
+         <font>
+            <Font name="Times New Roman" size="20.0" />
+         </font></TextArea>
+   </children>
+</StackPane>
