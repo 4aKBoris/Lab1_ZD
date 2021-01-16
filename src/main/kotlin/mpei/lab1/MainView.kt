@@ -61,7 +61,7 @@ class MainView : View("Лабораторная работа №1") {
             val fileChooser = FileChooser()
             fileChooser.title = "Открыть документ"
             fileChooser.initialDirectory = File("C:\\Users\\nagib\\IdeaProjects\\Lab1_ZD")
-            val extFilter = FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt") //Расширение
+            val extFilter = FileChooser.ExtensionFilter("SD files (*.sd)", "*.sd") //Расширение
             fileChooser.extensionFilters.add(extFilter)
             val file = fileChooser.showOpenDialog(primaryStage)
             val arr = cr.readFile(file)
@@ -103,7 +103,7 @@ class MainView : View("Лабораторная работа №1") {
             val fileChooser = FileChooser()
             fileChooser.title = "Сохранить документ"
             fileChooser.initialDirectory = File("C:\\Users\\nagib\\IdeaProjects\\Lab1_ZD")
-            val extFilter = FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt")
+            val extFilter = FileChooser.ExtensionFilter("SD files (*.sd)", "*.sd")
             fileChooser.extensionFilters.add(extFilter)
             val file = fileChooser.showSaveDialog(primaryStage) ?: throw MyException("Такого файла не существует!")
             val mas = watchDocument.text.toByteArray(Charsets.UTF_8)
@@ -177,7 +177,8 @@ class MainView : View("Лабораторная работа №1") {
                     ""
                 ) != name
             ) throw MyException("Вы выбрали открытый ключ для другого пользователя!")
-            val arr = cr.readFile(file)
+            var arr = cr.readFile(file)
+            if (arr[0].toInt() + arr[1].toInt() + 2 != arr.size) arr = arr.copyOf(arr[0].toInt() + arr[1].toInt() + 2)
             cr.writeFile(File("PK/$name.pub"), arr.plus(cr.signEnc(SHA1, arr, name)))
         } catch (e: MyException) {
             cr.createAlert(e.message!!, "Ошибка!", Alert.AlertType.ERROR)
