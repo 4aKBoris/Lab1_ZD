@@ -204,6 +204,7 @@ class MainView : View("Лабораторная работа №1") {
                 "Информирование",
                 Alert.AlertType.INFORMATION
             )
+            listUsers.remove(name)
         } catch (e: MyException) {
             cr.createAlert(e.message!!, "Ошибка!", Alert.AlertType.ERROR)
         }
