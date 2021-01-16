@@ -2,7 +2,6 @@
 
 package mpei.lab1
 
-import javafx.application.Platform
 import javafx.scene.control.Alert
 import org.bouncycastle.x509.X509V3CertificateGenerator
 import java.io.*
@@ -15,17 +14,16 @@ import kotlin.random.Random
 
 open class Crypto {
     fun createAlert(msg: String, header: String, type: Alert.AlertType) {
-        Platform.runLater {
-            val alert = Alert(type)
-            alert.headerText = header
-            alert.contentText = msg
-            alert.showAndWait()
-        }
+        val alert = Alert(type)
+        alert.headerText = header
+        alert.contentText = msg
+        alert.showAndWait()
     }
 
     fun createKeyPair(keyStore: KeyStore, name: String, alg: String, sign: String) {
         val rnd = Random
         val keyPairGenerator = KeyPairGenerator.getInstance(alg)
+        if (alg != EC) keyPairGenerator.initialize(1024)
         val keyPair = keyPairGenerator.genKeyPair()
         val gen = X509V3CertificateGenerator()
         val serverCommonName = X500Principal("CN=$name")
@@ -40,7 +38,8 @@ open class Crypto {
         gen.setSubjectDN(serverState)
         gen.setSubjectDN(serverCountry)
         gen.setPublicKey(keyPair.public)
-        gen.setSignatureAlgorithm(sign)
+        val a = if (alg == EC) "ECDSA" else DSA
+        gen.setSignatureAlgorithm("SHA256with$a")
         gen.setSerialNumber(BigInteger(rnd.nextInt(0, 2000000), java.util.Random()))
         val myCert = gen.generate(keyPair.private)
         keyStore.setKeyEntry("$name $sign", keyPair.private, null, arrayOf(myCert))
