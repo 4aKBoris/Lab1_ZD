@@ -1,4 +1,4 @@
-@file:Suppress("unused", "DEPRECATION", "SameParameterValue")
+@file:Suppress("unused", "DEPRECATION", "SameParameterValue", "UnnecessaryVariable")
 
 package mpei.lab1
 
@@ -20,10 +20,8 @@ import tornadofx.View
 import tornadofx.asObservable
 import java.io.*
 import java.math.BigInteger
-import java.security.KeyPairGenerator
-import java.security.KeyStore
-import java.security.SecureRandom
-import java.security.Signature
+import java.security.*
+import java.security.spec.X509EncodedKeySpec
 import java.util.*
 import javax.security.auth.x500.X500Principal
 import kotlin.random.Random
@@ -40,15 +38,16 @@ class MainView : View("Лабораторная работа №1") {
         if (!File(pathKeyStore).exists()) {
             val keyStore = KeyStore.getInstance(keyStoreAlgorithm)
             keyStore.load(null, keyStorePassword)
-            createKeyPair(keyStore, Admin, "EC", "SHA384withECDSA")
-            createKeyPair(keyStore, Admin, "RSA", "SHA1withRSA")
+            createKeyPair(keyStore, Admin, EC, SHA384)
+            createKeyPair(keyStore, Admin, RSA, SHA1)
             keyStore.store(FileOutputStream(pathKeyStore), keyStorePassword)
         }
 
         val keyStore = KeyStore.getInstance(keyStoreAlgorithm)
         keyStore.load(FileInputStream(pathKeyStore), keyStorePassword)
         listUsers =
-            keyStore.aliases().toList().map { it.replace(" sha384withecdsa", "").replace(" sha1withrsa", "") }.toSet()
+            keyStore.aliases().toList()
+                .map { it.replace(" $SHA384".toLowerCase(), "").replace(" $SHA1".toLowerCase(), "") }.toSet()
                 .toList().asObservable()
         selectUser.items = listUsers
         selectUser.selectionModel.selectedItemProperty().addListener { _, _, it -> userName.text = it }
@@ -62,47 +61,57 @@ class MainView : View("Лабораторная работа №1") {
 
     @FXML
     private fun openFileAction() {
-        val fileChooser = FileChooser()
-        fileChooser.title = "Открыть документ"
-        val extFilter = FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt") //Расширение
-        fileChooser.extensionFilters.add(extFilter)
-        val file = fileChooser.showOpenDialog(primaryStage)
-        if (file != null) {
-            val br = BufferedInputStream(FileInputStream(file))
-            val arr = br.readBytes()
-            br.close()
+        try {
+            val fileChooser = FileChooser()
+            fileChooser.title = "Открыть документ"
+            val extFilter = FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt") //Расширение
+            fileChooser.extensionFilters.add(extFilter)
+            val file = fileChooser.showOpenDialog(primaryStage)
+            val arr = readFile(file)
             val nameSize = arr.drop(1).first().toInt()
             val signSize = arr.drop(1).first().toInt()
             val name = arr.drop(nameSize).toByteArray().contentToString()
-            val s = arr.drop(signSize).toByteArray()
-            val brKey = BufferedInputStream(FileInputStream(File("PK/$name.pub")))
-            val publicKey = brKey.readBytes()
-            br.close()
+            val filePublicKey = File("PK/$name.pub")
+            val arrPublicKey = readFile(filePublicKey)
+            val arrPublicKeyClone = arrPublicKey
+            val filePublicKeyForPublicKey = File("PK/${name}ForPublicKey.pub")
+            val publicKeyForPublicKey = generatePublicKey(readFile(filePublicKeyForPublicKey), RSA)
+            val nameSizePublicKey = arrPublicKey.drop(1).first().toInt()
+            val keySize = arrPublicKey.drop(1).first().toInt()
+            val namePublicKey = arrPublicKey.drop(nameSizePublicKey).toByteArray().contentToString()
+            if (namePublicKey != name) throw MyException("Владельцы файла и открытого ключа различаются!")
+            val publicKey = generatePublicKey(arrPublicKey.drop(keySize).toByteArray(), EC)
+            signDec(
+                SHA1,
+                arrPublicKeyClone.dropLast(arrPublicKey.size).toByteArray(),
+                arrPublicKey,
+                publicKeyForPublicKey
+            )
+            signDec(SHA384, arrPublicKeyClone, arr.drop(signSize).toByteArray(), publicKey)
+            watchDocument.text = arr.contentToString()
+            this.title = name
+        } catch (e: MyException) {
+            createAlert(e.message!!, "Ошибка!", Alert.AlertType.ERROR)
         }
     }
 
     @FXML
     private fun saveFileAction() {
-        val fileChooser = FileChooser()
-        fileChooser.title = "Сохранить документ"
-        val extFilter = FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt") //Расширение
-        fileChooser.extensionFilters.add(extFilter)
-        val file = fileChooser.showSaveDialog(primaryStage)
-        if (file != null) {
+        try {
+            val fileChooser = FileChooser()
+            fileChooser.title = "Сохранить документ"
+            val extFilter = FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt") //Расширение
+            fileChooser.extensionFilters.add(extFilter)
+            val file = fileChooser.showSaveDialog(primaryStage)
             val mas = watchDocument.text.toByteArray()
             val name = userName.text
-            val keyStore = KeyStore.getInstance(keyStoreAlgorithm)
-            keyStore.load(FileInputStream(pathKeyStore), keyStorePassword)
-            val entryPassword = KeyStore.PasswordProtection(null)
-            val privateKeyEntry =
-                keyStore.getEntry("$name SHA384withECDSA", entryPassword) as KeyStore.PrivateKeyEntry
-            val sign = Signature.getInstance("SHA384withECDSA")
-            sign.initSign(privateKeyEntry.privateKey, SecureRandom())
-            sign.update(mas)
-            val s = sign.sign()
-            val bw = BufferedOutputStream(FileOutputStream(file))
-            bw.write(byteArrayOf(name.length.toByte(), s.size.toByte()).plus(name.toByteArray()).plus(s).plus(mas))
-            bw.close()
+            val s = signEnc(SHA384, mas, name)
+            writeFile(
+                file,
+                byteArrayOf(name.length.toByte(), s.size.toByte()).plus(name.toByteArray()).plus(s).plus(mas)
+            )
+        } catch (e: MyException) {
+            createAlert(e.message!!, "Ошибка!", Alert.AlertType.ERROR)
         }
     }
 
@@ -125,75 +134,109 @@ class MainView : View("Лабораторная работа №1") {
 
     @FXML
     private fun exportPublicKeyAction() {
-        if (userName.text == "") createAlert("Введите имя пользователя!", "Ошибка!", Alert.AlertType.ERROR)
-        else {
+        try {
             val name = userName.text
-            val keyStore = KeyStore.getInstance(keyStoreAlgorithm)
-            keyStore.load(FileInputStream(pathKeyStore), keyStorePassword)
-            val cert = keyStore.getCertificate("$name SHA384withECDSA")
-            val bw = BufferedOutputStream(FileOutputStream(File("$name.pub")))
-            bw.write(cert.publicKey.encoded)
+            if (name.isEmpty()) throw MyException("Введите имя пользователя!")
+            val publicKey = getPublicKey("$name $SHA384")
+            writeFile(
+                File("$name.pub"),
+                byteArrayOf(name.length.toByte(), publicKey.size.toByte()).plus(name.toByteArray()).plus(publicKey)
+            )
             createAlert("Ключ экспортирован!", "Информирование", Alert.AlertType.INFORMATION)
+        } catch (e: MyException) {
+            createAlert(e.message!!, "Ошибка!", Alert.AlertType.ERROR)
         }
     }
 
     @FXML
     private fun importPublicKeyAction() {
-        val fileChooser = FileChooser()
-        fileChooser.title = "Выбрать открытый ключ"
-        val extFilter = FileChooser.ExtensionFilter("PUB files (*.pub)", "*.pub") //Расширение
-        fileChooser.extensionFilters.add(extFilter)
-        val file = fileChooser.showOpenDialog(primaryStage)
-        if (file != null) {
-            val br = BufferedInputStream(FileInputStream(file))
-            val arr = br.readBytes()
-            br.close()
+        try {
+            val fileChooser = FileChooser()
+            fileChooser.title = "Выбрать открытый ключ"
+            val extFilter = FileChooser.ExtensionFilter("PUB files (*.pub)", "*.pub") //Расширение
+            fileChooser.extensionFilters.add(extFilter)
+            val file = fileChooser.showOpenDialog(primaryStage)
+            val arr = readFile(file)
             val name = userName.text
-            val keyStore = KeyStore.getInstance(keyStoreAlgorithm)
-            keyStore.load(FileInputStream(pathKeyStore), keyStorePassword)
-            val entryPassword = KeyStore.PasswordProtection(null)
-            val privateKeyEntry =
-                keyStore.getEntry("$name SHA1withRSA", entryPassword) as KeyStore.PrivateKeyEntry
-            val sign = Signature.getInstance("RSA")
-            sign.initSign(privateKeyEntry.privateKey, SecureRandom())
-            sign.update(arr)
-            val bw = BufferedOutputStream(FileOutputStream(File("PK/$name.pub")))
-            bw.write(arr.plus(sign.sign()))
-            bw.close()
+            writeFile(File("PK/$name.pub"), arr.plus(signEnc(SHA1, arr, name)))
+        } catch (e: MyException) {
+            createAlert(e.message!!, "Ошибка!", Alert.AlertType.ERROR)
         }
-
     }
 
     @FXML
     private fun deleteKeyPairAction() {
-        if (userName.text == "") createAlert("Введите имя пользователя!", "Ошибка!", Alert.AlertType.ERROR)
-        else {
+        try {
             val name = userName.text
+            if (name.isEmpty()) throw MyException("Введите имя пользователя!")
+            if (!File(pathKeyStore).exists()) throw MyException("Хранилище ключей отсутствует!")
             val keyStore = KeyStore.getInstance(keyStoreAlgorithm)
             keyStore.load(FileInputStream(pathKeyStore), keyStorePassword)
-            keyStore.deleteEntry("$name SHA384withECDSA")
-            keyStore.deleteEntry("$name SHA1withRSA")
+            if (!keyStore.containsAlias("$name $SHA384") || !keyStore.containsAlias("$name $SHA1")) throw MyException("Ключи пользователя $name в хранилище отсутствуют!")
+            keyStore.deleteEntry("$name $SHA384")
+            keyStore.deleteEntry("$name $SHA1")
             keyStore.store(FileOutputStream(pathKeyStore), keyStorePassword)
-            createAlert("Пара ключей для пользователя $name создана!", "Информирование", Alert.AlertType.INFORMATION)
+            createAlert(
+                "Пара ключей для пользователя $name создана!",
+                "Информирование",
+                Alert.AlertType.INFORMATION
+            )
+        } catch (e: MyException) {
+            createAlert(e.message!!, "Ошибка!", Alert.AlertType.ERROR)
         }
     }
 
     @FXML
     private fun createKeyPairAction() {
-        if (userName.text == "") createAlert("Введите имя пользователя!", "Ошибка!", Alert.AlertType.ERROR)
-        else {
+        try {
             val name = userName.text
+            if (name.isEmpty()) throw MyException("Введите имя пользователя!")
+            if (!File(pathKeyStore).exists()) throw MyException("Хранилище ключей отсутствует!")
             val keyStore = KeyStore.getInstance(keyStoreAlgorithm)
             keyStore.load(FileInputStream(pathKeyStore), keyStorePassword)
-            createKeyPair(keyStore, name, "EC", "SHA384withECDSA")
-            createKeyPair(keyStore, name, "RSA", "SHA1withRSA")
+            createKeyPair(keyStore, name, EC, SHA384)
+            createKeyPair(keyStore, name, RSA, SHA1)
             keyStore.store(FileOutputStream(pathKeyStore), keyStorePassword)
-            createAlert("Пара ключей для пользователя $name создана!", "Информирование", Alert.AlertType.INFORMATION)
+            createAlert(
+                "Пара ключей для пользователя $name создана!",
+                "Информирование",
+                Alert.AlertType.INFORMATION
+            )
+        } catch (e: MyException) {
+            createAlert(e.message!!, "Ошибка!", Alert.AlertType.ERROR)
         }
     }
 
     @FXML
-    private fun selectPrivateKeyAction() {
+    private fun exportPublicKeyForPublicKey() {
+        try {
+            val name = userName.text
+            if (name.isEmpty()) throw MyException("Введите имя пользователя!")
+            if (!File(pathKeyStore).exists()) throw MyException("Хранилище ключей отсутствует!")
+            val keyStore = KeyStore.getInstance(keyStoreAlgorithm)
+            keyStore.load(FileInputStream(pathKeyStore), keyStorePassword)
+            val cert = keyStore.getCertificate("$name $SHA1")
+            writeFile(File("${name}ForPublicKey.pub"), cert.publicKey.encoded)
+            createAlert("Ключ экспортирован!", "Информирование", Alert.AlertType.INFORMATION)
+        } catch (e: MyException) {
+            createAlert(e.message!!, "Ошибка!", Alert.AlertType.ERROR)
+        }
+    }
+
+    @FXML
+    private fun importPublicKeyForPublicKey() {
+        try {
+            val fileChooser = FileChooser()
+            fileChooser.title = "Выбрать открытый ключ"
+            val extFilter = FileChooser.ExtensionFilter("PUB files (*.pub)", "*.pub") //Расширение
+            fileChooser.extensionFilters.add(extFilter)
+            val file = fileChooser.showOpenDialog(primaryStage)
+            val name = userName.text
+            if (name.isEmpty()) throw MyException("Введите имя пользователя!")
+            writeFile(File("PK/${name}ForPublicKey.pub"), readFile(file))
+        } catch (e: MyException) {
+            createAlert(e.message!!, "Ошибка!", Alert.AlertType.ERROR)
+        }
 
     }
 
@@ -225,10 +268,71 @@ class MainView : View("Лабораторная работа №1") {
         gen.setSerialNumber(BigInteger(rnd.nextInt(0, 2000000), java.util.Random()))
         val myCert = gen.generate(keyPair.private)
         keyStore.setKeyEntry("$name $sign", keyPair.private, null, arrayOf(myCert))
-        if(!listUsers.contains(name)) listUsers.add(name)
+        if (!listUsers.contains(name)) listUsers.add(name)
+    }
+
+    @Throws(MyException::class)
+    private fun readFile(file: File): ByteArray {
+        if (!file.exists()) throw MyException("Файла ${file.name} не существует!")
+        val br = BufferedInputStream(FileInputStream(file))
+        val arr = br.readBytes()
+        br.close()
+        return arr
+    }
+
+    @Throws(MyException::class)
+    private fun writeFile(file: File, arr: ByteArray) {
+        if (!file.exists()) throw MyException("Файла ${file.name} не существует!")
+        val bw = BufferedOutputStream(FileOutputStream(file))
+        bw.write(arr)
+        bw.close()
+    }
+
+    @Throws(MyException::class)
+    private fun signEnc(alg: String, arr: ByteArray, name: String): ByteArray {
+        if (!File(pathKeyStore).exists()) throw MyException("Отсутствует хранилище ключей!")
+        val keyStore = KeyStore.getInstance(keyStoreAlgorithm)
+        keyStore.load(FileInputStream(pathKeyStore), keyStorePassword)
+        if (!keyStore.containsAlias("$name $alg")) throw MyException("Для пользователя $name не существует закрытого ключа!")
+        val entryPassword = KeyStore.PasswordProtection(null)
+        val privateKeyEntry =
+            keyStore.getEntry("$name $alg", entryPassword) as KeyStore.PrivateKeyEntry
+        val sign = Signature.getInstance(alg)
+        sign.initSign(privateKeyEntry.privateKey, SecureRandom())
+        sign.update(arr)
+        return sign.sign()
+    }
+
+    @Throws(MyException::class)
+    private fun signDec(alg: String, arr: ByteArray, sign: ByteArray, publicKey: PublicKey) {
+        val s = Signature.getInstance(alg)
+        s.initVerify(publicKey)
+        s.update(arr)
+        val k = if (alg == SHA384) "файла" else "открытого ключа"
+        if (!s.verify(sign)) throw MyException("Цифровая подпись $k не прошла проверку")
+    }
+
+    private fun getPublicKey(alias: String): ByteArray {
+        if (!File(pathKeyStore).exists()) throw MyException("Отсутствует хранилище ключей!")
+        val keyStore = KeyStore.getInstance(keyStoreAlgorithm)
+        keyStore.load(FileInputStream(pathKeyStore), keyStorePassword)
+        if (!keyStore.containsAlias(alias)) throw MyException("Открытого ключа для данного пользователя нет в хранилище")
+        val cert = keyStore.getCertificate(alias)
+        return cert.publicKey.encoded
+    }
+
+    private fun generatePublicKey(arr: ByteArray, alg: String): PublicKey {
+        val kf = KeyFactory.getInstance(alg)
+        val publicKeySpec = X509EncodedKeySpec(arr)
+        return kf.generatePublic(publicKeySpec)
     }
 
     companion object {
+        private const val SHA384 = "SHA384withECDSA"
+        private const val SHA1 = "SHA1withRSA"
+        private const val EC = "EC"
+        private const val RSA = "RSA"
+
         private lateinit var listUsers: ObservableList<String>
     }
 }

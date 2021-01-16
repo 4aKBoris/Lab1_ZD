@@ -42,7 +42,8 @@
                   <MenuItem mnemonicParsing="false" onAction="#importPublicKeyAction" text="Импорт открытого ключа" />
                   <MenuItem mnemonicParsing="false" onAction="#deleteKeyPairAction" text="Удаление пары ключей" />
                   <MenuItem mnemonicParsing="false" onAction="#createKeyPairAction" text="Создание пары ключей" />
-                  <MenuItem mnemonicParsing="false" onAction="#selectPrivateKeyAction" text="Выбор закрытого ключа" />
+                  <MenuItem mnemonicParsing="false" onAction="#exportPublicKeyForPublicKey" text="Экспорт открытого ключа для ключа" />
+                  <MenuItem mnemonicParsing="false" onAction="#importPublicKeyForPublicKey" text="Импорт открытого ключа для ключа" />
             </items>
           </Menu>
         </menus>
